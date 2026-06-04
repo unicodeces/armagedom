@@ -368,7 +368,11 @@ pip install webdriver-manager --upgrade
 
 ## 📜 Licença
 
-Este projeto está licenciado sob a **MIT License** - veja o arquivo LICENSE para detalhes.
+Este projeto está licenciado sob a **MIT License** - veja o arquivo [LICENSE](./LICENSE) para detalhes completos.
+
+```
+MIT License © 2024 Daishinkan
+```
 
 ---
 
