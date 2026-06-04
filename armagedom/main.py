@@ -1,0 +1,599 @@
+import requests
+import os
+from datetime import datetime
+from pystyle import Colors, Write, Center
+from config import ServerSettings
+from trial import DiscordBrowserLogin
+
+class VisualManager:
+    @staticmethod
+    def render(text, color=Colors.red_to_blue, speed=0.0001):
+        Write.Print(text, color, interval=speed)
+    
+    @staticmethod
+    def center(text):
+        return Center.XCenter(text)
+    
+    @staticmethod
+    def clear():
+        os.system('cls' if os.name == 'nt' else 'clear')
+    
+    @staticmethod
+    def banner():
+        art = """
+  /$$$$$$  /$$$$$$$  /$$      /$$  /$$$$$$   /$$$$$$  /$$$$$$$$ /$$$$$$$   /$$$$$$  /$$      /$$
+ /$$__  $$| $$__  $$| $$$    /$$$ /$$__  $$ /$$__  $$| $$_____/| $$__  $$ /$$__  $$| $$$    /$$$
+| $$  \ $$| $$  \ $$| $$$$  /$$$$| $$  \ $$| $$  \__/| $$      | $$  \ $$| $$  \ $$| $$$$  /$$$$
+| $$$$$$$$| $$$$$$$/| $$ $$/$$ $$| $$$$$$$$| $$ /$$$$| $$$$$   | $$  | $$| $$  | $$| $$ $$/$$ $$
+| $$__  $$| $$__  $$| $$  $$$| $$| $$__  $$| $$|_  $$| $$__/   | $$  | $$| $$  | $$| $$  $$$| $$
+| $$  | $$| $$  \ $$| $$\  $ | $$| $$  | $$| $$  \ $$| $$      | $$  | $$| $$  | $$| $$\  $ | $$
+| $$  | $$| $$  | $$| $$ \/  | $$| $$  | $$|  $$$$$$/| $$$$$$$$| $$$$$$$/|  $$$$$$/| $$ \/  | $$
+|__/  |__/|__/  |__/|__/     |__/|__/  |__/ \______/ |________/|_______/  \______/ |__/     |__/
+        """
+        VisualManager.render(VisualManager.center(art), Colors.red_to_blue, 0.00001)
+
+class DiscordAnalyzer:
+    def __init__(self):
+        self.token = None
+        self.user_data = None
+        self.base_url = "https://discord.com/api/v10"
+        self.headers = {}
+        self.sync_thread = None
+
+    def validate(self, token):
+        self.headers = {"Authorization": token}
+        try:
+            response = requests.get(f"{self.base_url}/users/@me", headers=self.headers)
+            if response.status_code == 200:
+                self.user_data = response.json()
+                self.token = token
+                return True
+            return False
+        except:
+            return False
+
+    def show_account(self):
+        if not self.user_data:
+            return
+        
+        d = self.user_data
+        avatar_id = d.get('avatar')
+        user_id = d.get('id')
+        avatar_url = f"https://cdn.discordapp.com/avatars/{user_id}/{avatar_id}.png" if avatar_id else "No avatar"
+
+        VisualManager.render("\n╔════════════════════════════════════════════════════════════════╗\n", Colors.red_to_blue, 0.00001)
+        VisualManager.render("║                    ACCOUNT INFORMATION                         ║\n", Colors.red_to_blue, 0.00001)
+        VisualManager.render("╚════════════════════════════════════════════════════════════════╝\n", Colors.red_to_blue, 0.00001)
+        
+        VisualManager.render(f"    ID: {d.get('id')}\n", Colors.red_to_blue, 0.00001)
+        VisualManager.render(f"    Username: {d.get('username')}\n", Colors.red_to_blue, 0.00001)
+        VisualManager.render(f"    Global Name: {d.get('global_name', 'N/A')}\n", Colors.red_to_blue, 0.00001)
+        VisualManager.render(f"    Email: {d.get('email', 'N/A')}\n", Colors.red_to_blue, 0.00001)
+        VisualManager.render(f"    Verified: {d.get('verified')}\n", Colors.red_to_blue, 0.00001)
+        VisualManager.render(f"    MFA: {d.get('mfa_enabled')}\n", Colors.red_to_blue, 0.00001)
+        VisualManager.render(f"    Avatar: {avatar_url}\n", Colors.red_to_blue, 0.00001)
+
+    def show_guilds(self):
+        try:
+            response = requests.get(f"{self.base_url}/users/@me/guilds", headers=self.headers)
+            if response.status_code != 200:
+                VisualManager.render("\n✗ Failed to retrieve guilds\n", Colors.red_to_blue, 0.00001)
+                return
+
+            guilds = response.json()
+            VisualManager.render(f"\n╔════════════════════════════════════════════════════════════════╗\n", Colors.red_to_blue, 0.00001)
+            VisualManager.render(f"║                    SERVERS ({len(guilds)})                            ║\n", Colors.red_to_blue, 0.00001)
+            VisualManager.render(f"╚════════════════════════════════════════════════════════════════╝\n\n", Colors.red_to_blue, 0.00001)
+
+            for guild in guilds:
+                gid = guild.get('id')
+                name = guild.get('name')
+                perms = guild.get('permissions', 0)
+                is_admin = bool(int(perms) & 0x8) if perms else False
+                is_owner = guild.get('owner', False)
+
+                role = "OWNER" if is_owner else ("ADMIN" if is_admin else "MEMBER")
+                joined = "N/A"
+
+                try:
+                    mr = requests.get(f"{self.base_url}/users/@me/guilds/{gid}/member", headers=self.headers)
+                    if mr.status_code == 200:
+                        jt = mr.json().get('joined_at')
+                        if jt:
+                            dt = datetime.fromisoformat(jt.replace('Z', '+00:00'))
+                            joined = dt.strftime('%d/%m/%Y %H:%M:%S UTC')
+                    else:
+                        mr = requests.get(f"{self.base_url}/guilds/{gid}/members/@me", headers=self.headers)
+                        if mr.status_code == 200:
+                            jt = mr.json().get('joined_at')
+                            if jt:
+                                dt = datetime.fromisoformat(jt.replace('Z', '+00:00'))
+                                joined = dt.strftime('%d/%m/%Y %H:%M:%S UTC')
+                except:
+                    pass
+
+                VisualManager.render(f"    {name}\n", Colors.red_to_blue, 0.00001)
+                VisualManager.render(f"    ID: {gid} | Role: {role} | Joined: {joined}\n\n", Colors.red_to_blue, 0.00001)
+        except Exception as e:
+            VisualManager.render(f"\n✗ Error: {e}\n", Colors.red_to_blue, 0.00001)
+
+    def show_connections(self):
+        try:
+            response = requests.get(f"{self.base_url}/users/@me/connections", headers=self.headers)
+            if response.status_code != 200:
+                VisualManager.render("\n✗ Failed to retrieve connections\n", Colors.red_to_blue, 0.00001)
+                return
+
+            conns = response.json()
+            VisualManager.render(f"\n╔════════════════════════════════════════════════════════════════╗\n", Colors.red_to_blue, 0.00001)
+            VisualManager.render(f"║                    CONNECTIONS ({len(conns)})                         ║\n", Colors.red_to_blue, 0.00001)
+            VisualManager.render(f"╚════════════════════════════════════════════════════════════════╝\n", Colors.red_to_blue, 0.00001)
+            
+            if conns:
+                for c in conns:
+                    VisualManager.render(f"    {c.get('type').upper()}: {c.get('name')}\n", Colors.red_to_blue, 0.00001)
+            else:
+                VisualManager.render("    None\n", Colors.red_to_blue, 0.00001)
+        except Exception as e:
+            VisualManager.render(f"\n✗ Error: {e}\n", Colors.red_to_blue, 0.00001)
+
+    def show_billing(self):
+        try:
+            response = requests.get(f"{self.base_url}/users/@me/billing/payment-sources", headers=self.headers)
+            if response.status_code != 200:
+                VisualManager.render("\n✗ Failed to retrieve payment methods\n", Colors.red_to_blue, 0.00001)
+                return
+
+            payments = response.json()
+            VisualManager.render("\n╔════════════════════════════════════════════════════════════════╗\n", Colors.red_to_blue, 0.00001)
+            VisualManager.render("║                    PAYMENT METHODS                             ║\n", Colors.red_to_blue, 0.00001)
+            VisualManager.render("╚════════════════════════════════════════════════════════════════╝\n", Colors.red_to_blue, 0.00001)
+            
+            if payments:
+                for p in payments:
+                    brand = p.get('brand', 'N/A')
+                    last4 = p.get('last_4', 'N/A')
+                    VisualManager.render(f"    {brand} **** **** **** {last4}\n", Colors.red_to_blue, 0.00001)
+            else:
+                VisualManager.render("    None\n", Colors.red_to_blue, 0.00001)
+        except Exception as e:
+            VisualManager.render(f"\n✗ Error: {e}\n", Colors.red_to_blue, 0.00001)
+
+    def show_nitro(self):
+        if not self.user_data:
+            return
+        types = {0: "None", 1: "Nitro Classic", 2: "Nitro", 3: "Nitro Basic"}
+        pt = self.user_data.get('premium_type', 0)
+        
+        VisualManager.render("\n╔════════════════════════════════════════════════════════════════╗\n", Colors.red_to_blue, 0.00001)
+        VisualManager.render("║                    NITRO STATUS                                ║\n", Colors.red_to_blue, 0.00001)
+        VisualManager.render("╚════════════════════════════════════════════════════════════════╝\n", Colors.red_to_blue, 0.00001)
+        VisualManager.render(f"    Status: {types.get(pt, 'Unknown')}\n", Colors.red_to_blue, 0.00001)
+
+    def show_friends(self):
+        try:
+            response = requests.get(f"{self.base_url}/users/@me/relationships", headers=self.headers)
+            if response.status_code != 200:
+                VisualManager.render(f"\n✗ Failed to retrieve friends (Status: {response.status_code})\n", Colors.red_to_blue, 0.00001)
+                return
+
+            rels = response.json()
+            friends = [r for r in rels if r.get('type') == 1]
+            
+            VisualManager.render(f"\n╔════════════════════════════════════════════════════════════════╗\n", Colors.red_to_blue, 0.00001)
+            VisualManager.render(f"║                    FRIENDS ({len(friends)})                           ║\n", Colors.red_to_blue, 0.00001)
+            VisualManager.render(f"╚════════════════════════════════════════════════════════════════╝\n\n", Colors.red_to_blue, 0.00001)
+
+            if friends:
+                for f in friends:
+                    user = f.get('user', {})
+                    uid = user.get('id')
+                    username = user.get('username')
+                    gname = user.get('global_name', 'N/A')
+                    disc = user.get('discriminator', '0')
+
+                    since = f.get('since')
+                    fdate = "N/A"
+                    if since:
+                        try:
+                            dt = datetime.fromisoformat(since.replace('Z', '+00:00'))
+                            fdate = dt.strftime('%d/%m/%Y %H:%M:%S UTC')
+                        except:
+                            fdate = since
+
+                    utype = "BOT" if user.get('bot') else "USER"
+                    tag = f"{username}#{disc}" if disc != '0' else username
+
+                    VisualManager.render(f"\n    Name: {gname} (@{tag})\n", Colors.red_to_blue, 0.00001)
+                    VisualManager.render(f"    ID: {uid}\n", Colors.red_to_blue, 0.00001)
+                    VisualManager.render(f"    Type: {utype}\n", Colors.red_to_blue, 0.00001)
+                    VisualManager.render(f"    Friends since: {fdate}\n", Colors.red_to_blue, 0.00001)
+            else:
+                VisualManager.render("    None\n", Colors.red_to_blue, 0.00001)
+        except Exception as e:
+            VisualManager.render(f"\n✗ Error: {e}\n", Colors.red_to_blue, 0.00001)
+
+    def show_sessions(self):
+        try:
+            response = requests.get(f"{self.base_url}/auth/sessions", headers=self.headers)
+            if response.status_code != 200:
+                VisualManager.render(f"\n✗ Failed to retrieve sessions (Status: {response.status_code})\n", Colors.red_to_blue, 0.00001)
+                return
+
+            data = response.json()
+            sessions = data.get('user_sessions', []) if isinstance(data, dict) else data
+
+            VisualManager.render(f"\n╔════════════════════════════════════════════════════════════════╗\n", Colors.red_to_blue, 0.00001)
+            VisualManager.render(f"║                    ACTIVE SESSIONS ({len(sessions)})                  ║\n", Colors.red_to_blue, 0.00001)
+            VisualManager.render(f"╚════════════════════════════════════════════════════════════════╝\n\n", Colors.red_to_blue, 0.00001)
+            
+            if sessions:
+                for s in sessions:
+                    if not isinstance(s, dict):
+                        continue
+
+                    ci = s.get('client_info', {})
+                    VisualManager.render(f"\n    Device: {ci.get('os', 'N/A')} ━ {ci.get('platform', 'N/A')}\n", Colors.red_to_blue, 0.00001)
+                    VisualManager.render(f"    Client: {ci.get('client', 'N/A')}\n", Colors.red_to_blue, 0.00001)
+                    VisualManager.render(f"    Location: {ci.get('location', 'N/A')}\n", Colors.red_to_blue, 0.00001)
+                    VisualManager.render(f"    Session ID: {s.get('id_hash', 'N/A')}\n", Colors.red_to_blue, 0.00001)
+
+                    last = s.get('approx_last_used_time') or s.get('last_used_time') or s.get('created_at')
+                    if last:
+                        VisualManager.render(f"    Last used: {last}\n", Colors.red_to_blue, 0.00001)
+            else:
+                VisualManager.render("    None\n", Colors.red_to_blue, 0.00001)
+        except Exception as e:
+            VisualManager.render(f"\n✗ Error: {e}\n", Colors.red_to_blue, 0.00001)
+
+    def show_security(self):
+        try:
+            VisualManager.render("\n╔════════════════════════════════════════════════════════════════╗\n", Colors.red_to_blue, 0.00001)
+            VisualManager.render("║                    SECURITY INFORMATION                        ║\n", Colors.red_to_blue, 0.00001)
+            VisualManager.render("╚════════════════════════════════════════════════════════════════╝\n", Colors.red_to_blue, 0.00001)
+
+            response = requests.get(f"{self.base_url}/users/@me/authorized-ip-addresses", headers=self.headers)
+            if response.status_code == 200:
+                ips = response.json()
+                if ips and len(ips) > 0:
+                    VisualManager.render("\n    Authorized IPs:\n", Colors.red_to_blue, 0.00001)
+                    for ip in ips:
+                        VisualManager.render(f"    IP: {ip.get('ip', 'N/A')}\n", Colors.red_to_blue, 0.00001)
+                        if ip.get('last_used'):
+                            VisualManager.render(f"    Last used: {ip.get('last_used')}\n", Colors.red_to_blue, 0.00001)
+                        if ip.get('location'):
+                            VisualManager.render(f"    Location: {ip.get('location')}\n", Colors.red_to_blue, 0.00001)
+            else:
+                VisualManager.render("\n    IP endpoint unavailable\n", Colors.red_to_blue, 0.00001)
+
+            try:
+                cr = requests.get(f"{self.base_url}/users/@me/consent", headers=self.headers)
+                if cr.status_code == 200:
+                    cd = cr.json()
+                    VisualManager.render("\n    Consent:\n", Colors.red_to_blue, 0.00001)
+                    VisualManager.render(f"    Personalization: {cd.get('personalization', {}).get('consented', 'N/A')}\n", Colors.red_to_blue, 0.00001)
+                    VisualManager.render(f"    Usage statistics: {cd.get('usage_statistics', {}).get('consented', 'N/A')}\n", Colors.red_to_blue, 0.00001)
+            except:
+                pass
+
+            if self.user_data:
+                VisualManager.render("\n    Account Security:\n", Colors.red_to_blue, 0.00001)
+                VisualManager.render(f"    Email verified: {self.user_data.get('verified')}\n", Colors.red_to_blue, 0.00001)
+                VisualManager.render(f"    MFA enabled: {self.user_data.get('mfa_enabled')}\n", Colors.red_to_blue, 0.00001)
+                VisualManager.render(f"    Phone linked: {bool(self.user_data.get('phone'))}\n", Colors.red_to_blue, 0.00001)
+                VisualManager.render(f"    Account flags: {self.user_data.get('flags', 0)}\n", Colors.red_to_blue, 0.00001)
+                VisualManager.render(f"    Public flags: {self.user_data.get('public_flags', 0)}\n", Colors.red_to_blue, 0.00001)
+        except Exception as e:
+            VisualManager.render(f"\n✗ Error: {e}\n", Colors.red_to_blue, 0.00001)
+
+    def clone_server(self):
+        try:
+            import features
+            features.main(self.token)
+        except ImportError:
+            VisualManager.render("\n✗ Error: features.py not found\n", Colors.red_to_blue, 0.00001)
+        except Exception as e:
+            VisualManager.render(f"\n✗ Error running features: {e}\n", Colors.red_to_blue, 0.00001)
+
+    def browser_login(self):
+        try:
+            if not self.token:
+                VisualManager.render("\n✗ No token available\n", Colors.red_to_blue, 0.00001)
+                return
+            
+            VisualManager.render("\n✓ Starting browser auto-login...\n", Colors.red_to_blue, 0.00001)
+            login_manager = DiscordBrowserLogin(self.token)
+            login_manager.login()
+        except Exception as e:
+            VisualManager.render(f"\n✗ Error during browser login: {e}\n", Colors.red_to_blue, 0.00001)
+
+    def save_report(self):
+        if not self.user_data:
+            VisualManager.render("\n✗ No data to save\n", Colors.red_to_blue, 0.00001)
+            return
+
+        gname = self.user_data.get('global_name') or self.user_data.get('username') or 'report'
+        filename = f"{gname.replace(' ', '_')}.txt"
+
+        try:
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write("=" * 70 + "\n")
+                f.write("DISCORD ACCOUNT REPORT\n")
+                f.write("=" * 70 + "\n\n")
+
+                f.write(f"TOKEN: {self.token}\n\n")
+
+                d = self.user_data
+                avatar_id = d.get('avatar')
+                user_id = d.get('id')
+                avatar_url = f"https://cdn.discordapp.com/avatars/{user_id}/{avatar_id}.png" if avatar_id else "No avatar"
+
+                f.write("ACCOUNT INFORMATION\n")
+                f.write(f"ID: {d.get('id')}\n")
+                f.write(f"Username: {d.get('username')}\n")
+                f.write(f"Global Name: {d.get('global_name', 'N/A')}\n")
+                f.write(f"Email: {d.get('email', 'N/A')}\n")
+                f.write(f"Verified: {d.get('verified')}\n")
+                f.write(f"MFA: {d.get('mfa_enabled')}\n")
+                f.write(f"Avatar: {avatar_url}\n\n")
+
+                types = {0: "None", 1: "Nitro Classic", 2: "Nitro", 3: "Nitro Basic"}
+                pt = d.get('premium_type', 0)
+                f.write(f"Nitro Status: {types.get(pt, 'Unknown')}\n\n")
+
+                try:
+                    response = requests.get(f"{self.base_url}/users/@me/guilds", headers=self.headers)
+                    if response.status_code == 200:
+                        guilds = response.json()
+                        f.write(f"GUILDS ({len(guilds)})\n")
+                        f.write("-" * 70 + "\n")
+
+                        for guild in guilds:
+                            gid = guild.get('id')
+                            name = guild.get('name')
+                            perms = guild.get('permissions', 0)
+                            is_admin = bool(int(perms) & 0x8) if perms else False
+                            is_owner = guild.get('owner', False)
+                            role = "OWNER" if is_owner else ("ADMIN" if is_admin else "MEMBER")
+                            joined = "N/A"
+
+                            try:
+                                mr = requests.get(f"{self.base_url}/users/@me/guilds/{gid}/member", headers=self.headers)
+                                if mr.status_code == 200:
+                                    jt = mr.json().get('joined_at')
+                                    if jt:
+                                        dt = datetime.fromisoformat(jt.replace('Z', '+00:00'))
+                                        joined = dt.strftime('%d/%m/%Y %H:%M:%S UTC')
+                            except:
+                                pass
+
+                            f.write(f"\nName: {name}\n")
+                            f.write(f"ID: {gid}\n")
+                            f.write(f"Role: {role}\n")
+                            f.write(f"Joined: {joined}\n")
+                except:
+                    f.write("\nGUILDS: Error retrieving data\n")
+
+                f.write("\n")
+
+                try:
+                    response = requests.get(f"{self.base_url}/users/@me/relationships", headers=self.headers)
+                    if response.status_code == 200:
+                        rels = response.json()
+                        friends = [r for r in rels if r.get('type') == 1]
+                        f.write(f"FRIENDS ({len(friends)})\n")
+                        f.write("-" * 70 + "\n")
+
+                        for fr in friends:
+                            user = fr.get('user', {})
+                            uid = user.get('id')
+                            username = user.get('username')
+                            gname_fr = user.get('global_name', 'N/A')
+                            disc = user.get('discriminator', '0')
+                            tag = f"{username}#{disc}" if disc != '0' else username
+                            utype = "BOT" if user.get('bot') else "USER"
+
+                            since = fr.get('since')
+                            fdate = "N/A"
+                            if since:
+                                try:
+                                    dt = datetime.fromisoformat(since.replace('Z', '+00:00'))
+                                    fdate = dt.strftime('%d/%m/%Y %H:%M:%S UTC')
+                                except:
+                                    fdate = since
+
+                            f.write(f"\nName: {gname_fr} (@{tag})\n")
+                            f.write(f"ID: {uid}\n")
+                            f.write(f"Type: {utype}\n")
+                            f.write(f"Friends since: {fdate}\n")
+                except:
+                    f.write("\nFRIENDS: Error retrieving data\n")
+
+                f.write("\n")
+
+                try:
+                    response = requests.get(f"{self.base_url}/users/@me/connections", headers=self.headers)
+                    if response.status_code == 200:
+                        conns = response.json()
+                        f.write(f"CONNECTIONS ({len(conns)})\n")
+                        f.write("-" * 70 + "\n")
+                        if conns:
+                            for c in conns:
+                                f.write(f"{c.get('type').upper()}: {c.get('name')}\n")
+                        else:
+                            f.write("None\n")
+                except:
+                    f.write("CONNECTIONS: Error retrieving data\n")
+
+                f.write("\n")
+
+                try:
+                    response = requests.get(f"{self.base_url}/auth/sessions", headers=self.headers)
+                    if response.status_code == 200:
+                        data = response.json()
+                        sessions = data.get('user_sessions', []) if isinstance(data, dict) else data
+                        f.write(f"ACTIVE SESSIONS ({len(sessions)})\n")
+                        f.write("-" * 70 + "\n")
+
+                        for s in sessions:
+                            if not isinstance(s, dict):
+                                continue
+                            ci = s.get('client_info', {})
+                            f.write(f"\nDevice: {ci.get('os', 'N/A')} - {ci.get('platform', 'N/A')}\n")
+                            f.write(f"Client: {ci.get('client', 'N/A')}\n")
+                            f.write(f"Location: {ci.get('location', 'N/A')}\n")
+                            f.write(f"Session ID: {s.get('id_hash', 'N/A')}\n")
+                            last = s.get('approx_last_used_time') or s.get('last_used_time') or s.get('created_at')
+                            if last:
+                                f.write(f"Last used: {last}\n")
+                except:
+                    f.write("ACTIVE SESSIONS: Error retrieving data\n")
+
+                f.write("\n")
+
+                try:
+                    response = requests.get(f"{self.base_url}/users/@me/billing/payment-sources", headers=self.headers)
+                    if response.status_code == 200:
+                        payments = response.json()
+                        f.write("PAYMENT METHODS\n")
+                        f.write("-" * 70 + "\n")
+                        if payments:
+                            for p in payments:
+                                brand = p.get('brand', 'N/A')
+                                last4 = p.get('last_4', 'N/A')
+                                f.write(f"{brand} **** **** **** {last4}\n")
+                        else:
+                            f.write("None\n")
+                except:
+                    f.write("PAYMENT METHODS: Error retrieving data\n")
+
+                f.write("\n")
+                f.write("SECURITY INFORMATION\n")
+                f.write("-" * 70 + "\n")
+                f.write(f"Email verified: {d.get('verified')}\n")
+                f.write(f"MFA enabled: {d.get('mfa_enabled')}\n")
+                f.write(f"Phone linked: {bool(d.get('phone'))}\n")
+                f.write(f"Account flags: {d.get('flags', 0)}\n")
+                f.write(f"Public flags: {d.get('public_flags', 0)}\n")
+
+                f.write("\n" + "=" * 70 + "\n")
+                f.write("END OF REPORT\n")
+                f.write("=" * 70 + "\n")
+
+            VisualManager.render(f"\n✓ Report saved to: {filename}\n", Colors.red_to_blue, 0.00001)
+        except Exception as e:
+            VisualManager.render(f"\n✗ Error saving report: {e}\n", Colors.red_to_blue, 0.00001)
+
+    def add_bot(self):
+        try:
+            from bot_injection import main as bot_main
+            VisualManager.render("\n╔════════════════════════════════════════════════════════════════╗\n", Colors.red_to_blue, 0.00001)
+            VisualManager.render("║                       ADD BOT                                  ║\n", Colors.red_to_blue, 0.00001)
+            VisualManager.render("╚════════════════════════════════════════════════════════════════╝\n\n", Colors.red_to_blue, 0.00001)
+            VisualManager.render("    Enter the bot authorization URL\n    Example: https://discord.com/oauth2/authorize?client_id=...\n\n", Colors.red_to_blue, 0.00001)
+            bot_url = input("    Bot URL: ").strip()
+            if not bot_url:
+                VisualManager.render("\n✗ No URL provided\n", Colors.red_to_blue, 0.00001)
+                return
+            bot_main(self.token, bot_url)
+        except ImportError:
+            VisualManager.render("\n✗ Error: bot_injection.py not found\n", Colors.red_to_blue, 0.00001)
+        except Exception as e:
+            VisualManager.render(f"\n✗ Error: {e}\n", Colors.red_to_blue, 0.00001)
+
+    def menu(self):
+        VisualManager.render("\n╔════════════════════════════════════════════════════════════════╗\n", Colors.red_to_blue, 0.00001)
+        VisualManager.render("║                        MAIN MENU                               ║\n", Colors.red_to_blue, 0.00001)
+        VisualManager.render("╚════════════════════════════════════════════════════════════════╝\n\n", Colors.red_to_blue, 0.00001)
+        
+        VisualManager.render("""
+    [1] ━ Guilds              [2] ━ Connections
+    [3] ━ Payment Methods     [4] ━ Nitro Status
+    [5] ━ Friends             [6] ━ Active Sessions
+    [7] ━ Security Info       [8] ━ Full Report
+    [9] ━ Save to File        [10] ━ Server Settings
+    [11] ━ Clone Server       [12] ━ Browser Login
+    [13] ━ Change Token       [14] ━ Add Bot
+    [0] ━ Exit
+
+""", Colors.red_to_blue, 0.00001)
+
+    def run(self):
+        VisualManager.clear()
+        VisualManager.banner()
+
+        VisualManager.render("\n", Colors.red_to_blue, 0.00001)
+        token = input("            Token: ").strip()
+
+        if not self.validate(token):
+            VisualManager.render("\n✗ Invalid token\n", Colors.red_to_blue, 0.00001)
+            return
+
+        VisualManager.clear()
+        VisualManager.banner()
+        self.show_account()
+
+        while True:
+            self.menu()
+            choice = input("\n    Select: ").strip()
+
+            if choice == "1":
+                self.show_guilds()
+            elif choice == "2":
+                self.show_connections()
+            elif choice == "3":
+                self.show_billing()
+            elif choice == "4":
+                self.show_nitro()
+            elif choice == "5":
+                self.show_friends()
+            elif choice == "6":
+                self.show_sessions()
+            elif choice == "7":
+                self.show_security()
+            elif choice == "8":
+                self.show_account()
+                self.show_nitro()
+                self.show_guilds()
+                self.show_friends()
+                self.show_connections()
+                self.show_sessions()
+                self.show_security()
+                self.show_billing()
+            elif choice == "9":
+                self.save_report()
+            elif choice == "10":
+                settings = ServerSettings(self.token, self.base_url)
+                settings.run()
+            elif choice == "11":
+                self.clone_server()
+            elif choice == "12":
+                self.browser_login()
+            elif choice == "13":
+                VisualManager.clear()
+                VisualManager.banner()
+                VisualManager.render("\n", Colors.red_to_blue, 0.00001)
+                token = input("    Token: ").strip()
+                if self.validate(token):
+                    VisualManager.clear()
+                    VisualManager.banner()
+                    self.show_account()
+                else:
+                    VisualManager.render("\n✗ Invalid token\n", Colors.red_to_blue, 0.00001)
+                    break
+            elif choice == "14":
+                self.add_bot()
+            elif choice == "0":
+                VisualManager.render("\n✓ Exiting...\n", Colors.red_to_blue, 0.00001)
+                break
+            else:
+                VisualManager.render("✗ Invalid option\n", Colors.red_to_blue, 0.00001)
+
+            input("\n    Press ENTER to continue...")
+            VisualManager.clear()
+            VisualManager.banner()
+            self.show_account()
+
+if __name__ == "__main__":
+    analyzer = DiscordAnalyzer()
+    analyzer.run()
