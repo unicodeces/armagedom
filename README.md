@@ -371,14 +371,14 @@ pip install webdriver-manager --upgrade
 Este projeto está licenciado sob a **MIT License** - veja o arquivo [LICENSE](./LICENSE) para detalhes completos.
 
 ```
-MIT License © 2024 Daishinkan
+MIT License © 2024 Unicodeces
 ```
 
 ---
 
 ## 👨‍💻 Créditos
 
-**Desenvolvido por**: [Daishinkan](https://github.com/unicodeces)
+**Desenvolvido por**: [Unicodeces](https://github.com/unicodeces)
 
 **Repositório**: [github.com/unicodeces/armagedom](https://github.com/unicodeces/armagedom)
 
@@ -418,6 +418,6 @@ Encontrou um bug ou tem sugestões?
 
 **[⬆ Voltar ao topo](#armagedom)**
 
-Feito com ❤️ por [Daishinkan](https://github.com/unicodeces)
+Feito com ❤️ por [Unicodeces](https://github.com/unicodeces)
 
 </div>
